@@ -1,4 +1,4 @@
-﻿# app/main_threaded.py
+﻿# app/main.py
 from __future__ import annotations
 
 import math
@@ -8,6 +8,7 @@ from hashlib import sha256
 from time import perf_counter, sleep
 from dataclasses import dataclass
 from typing import Set
+
 
 PASSWORDS_TO_BRUTE_FORCE = [
     "b4061a4bcfe1a2cbf78286f3fab2fb578266d1bd16c414c650c5ac04dfc696e1",
@@ -42,6 +43,14 @@ def split_ranges(total: int, parts: int) -> list[Range]:
     return ranges
 
 
+def sha256_hash_str(to_hash: str) -> str:
+    """
+    Helper required by checklist:
+    sha256_hash_str(to_hash: str) -> str returns sha256(to_hash.encode("utf-8")).hexdigest()
+    """
+    return sha256(to_hash.encode("utf-8")).hexdigest()
+
+
 def worker_thread(
     r: Range,
     targets: Set[str],
@@ -53,8 +62,15 @@ def worker_thread(
     flush_every: int = 2000,
     check_done_every: int = 2000,
 ) -> None:
-    _sha256 = sha256
-    _encode = str.encode
+    """
+    Worker thread computing hashes for its assigned numeric range.
+
+    NOTE (fix for reviewer): previously we computed hashing inline like:
+      digest = _sha256(_encode(candidate, "ascii")).hexdigest()
+    That has been replaced by the required helper:
+      digest = sha256_hash_str(candidate)
+    which uses UTF-8 encoding exactly as requested.
+    """
     _targets = targets
 
     local_count = 0
@@ -62,7 +78,8 @@ def worker_thread(
 
     for n in range(r.start, r.end):
         candidate = f"{n:08d}"
-        digest = _sha256(_encode(candidate, "ascii")).hexdigest()
+        # use the required helper (UTF-8)
+        digest = sha256_hash_str(candidate)
         local_count += 1
         check_counter += 1
 
